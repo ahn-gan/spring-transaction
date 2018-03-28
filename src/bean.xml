@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--使用事务的约束-->
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:tx="http://www.springframework.org/schema/tx" xsi:schemaLocation="
+    http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+    http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd
+    http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd">
+
+    <!--首先要使用aop注解方式，需要开启aop操作-->
+    <aop:aspectj-autoproxy></aop:aspectj-autoproxy>
+    <!--c3p0连接池的配置-->
+    <!--使用c3p0配置数据库连接池-->
+    <!--原始代码
+        ComboPooledDataSource dataSource=new ComboPooledDataSource();
+        dataSource.setDriverClass("com.mysql.jdbc.Driver");
+        dataSource.setJdbcUrl("jdbc:mysql:///springdb");
+        dataSource.setUser("root");
+        dataSource.setPassword("root");-->
+    <!--创建对象-->
+    <bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource">
+        <!--注入属性值-->
+        <property name="driverClass" value="com.mysql.jdbc.Driver"></property>
+        <property name="jdbcUrl" value="jdbc:mysql:///springdb"></property>
+        <property name="user" value="root"></property>
+        <property name="password" value="root"></property>
+    </bean>
+
+    <!--配置文件实现事务的管理-->
+    <!--使用事务，首先先配置事务管理器-->
+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <!--注入属性dataSource-->
+        <property name="dataSource" ref="dataSource"></property>
+    </bean>
+    <!--第二步，配置事务的增强-->
+    <tx:advice id="txadvice" transaction-manager="transactionManager">
+        <!--做事务的操作-->
+        <tx:attributes>
+            <!--设置事务操作的方法匹配名称
+                以下匹配的是以trans开头的方法名称-->
+            <!--method name属性为要进行事务操作的方法名称，即service对象中进行的业务操作-->
+            <tx:method name="trans*" propagation="REQUIRED"/>
+        </tx:attributes>
+    </tx:advice>
+    <!--第三、配置切面-->
+    <aop:config>
+        <!--配置切点，即需要增强的方法的路径-->
+        <aop:pointcut id="pointcut1" expression="execution(* com.ahn.service.OrdersService.*(..))"></aop:pointcut>
+        <!--配置切面，把需要增强的点用在需要增强的面-->
+        <!--advice-re为配置增强的id
+            pointcut-ref:为配置的切点的id-->
+        <aop:advisor advice-ref="txadvice" pointcut-ref="pointcut1"></aop:advisor>
+    </aop:config>
+
+    <!--创建对象，注入属性-->
+    <bean id="ordersService" class="com.ahn.service.OrdersService">
+        <property name="ordersDao" ref="ordersDao"></property>
+    </bean>
+    <bean id="ordersDao" class="com.ahn.dao.OrdersDao">
+        <!--使用jdbcTemplate对象-->
+        <property name="jdbcTemplate" ref="jdbcTemplate"></property>
+    </bean>
+
+    <!--创建jdbcTemplate对象-->
+    <bean id="jdbcTemplate" class="org.springframework.jdbc.core.JdbcTemplate">
+        <!--把dataSource注入到模板里面去-->
+        <property name="dataSource" ref="dataSource"></property>
+    </bean>
+</beans>
